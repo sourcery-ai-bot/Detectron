@@ -68,8 +68,7 @@ def parse_args():
         parser.print_help()
         sys.exit(1)
 
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def normalize_resnet_name(name):
@@ -79,12 +78,14 @@ def normalize_resnet_name(name):
         #  res2a_branch1 -> res2_0_branch1
         chunk = name[len('res'):name.find('_')]
         name = (
-            'res' + chunk[0] + '_' + str(
-                int(chunk[2:]) if len(chunk) > 2  # e.g., "b1" -> 1
+            f'res{chunk[0]}_'
+            + str(
+                int(chunk[2:])
+                if len(chunk) > 2  # e.g., "b1" -> 1
                 else ord(chunk[1]) - ord('a')
-            ) +  # e.g., "a" -> 0
-            name[name.find('_'):]
-        )
+            )
+        ) + name[name.find('_') :]
+
     return name
 
 
@@ -169,7 +170,7 @@ def remove_layers_without_parameters(caffenet, caffenet_weights):
                     found = True
                     break
             if not found and name[-len('_split'):] != '_split':
-                print('Warning: layer {} not found in caffenet'.format(name))
+                print(f'Warning: layer {name} not found in caffenet')
             caffenet_weights.layer.pop(i)
 
 

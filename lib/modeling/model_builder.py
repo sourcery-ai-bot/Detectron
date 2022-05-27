@@ -126,10 +126,7 @@ def get_func(func_name):
         return None
     new_func_name = modeling.name_compat.get_new_name(func_name)
     if new_func_name != func_name:
-        logger.warn(
-            'Remapping old function name: {} -> {}'.
-            format(func_name, new_func_name)
-        )
+        logger.warn(f'Remapping old function name: {func_name} -> {new_func_name}')
         func_name = new_func_name
     try:
         parts = func_name.split('.')
@@ -141,7 +138,7 @@ def get_func(func_name):
         module = importlib.import_module(module_name)
         return getattr(module, parts[-1])
     except Exception:
-        logger.error('Failed to find function: {}'.format(func_name))
+        logger.error(f'Failed to find function: {func_name}')
         raise
 
 
@@ -210,14 +207,13 @@ def build_generic_detection_model(
                 spatial_scale_conv
             )
 
-        if model.train:
-            loss_gradients = {}
-            for lg in head_loss_gradients.values():
-                if lg is not None:
-                    loss_gradients.update(lg)
-            return loss_gradients
-        else:
+        if not model.train:
             return None
+        loss_gradients = {}
+        for lg in head_loss_gradients.values():
+            if lg is not None:
+                loss_gradients |= lg
+        return loss_gradients
 
     optim.build_data_parallel_model(model, _single_gpu_build_func)
     return model
@@ -247,11 +243,7 @@ def _add_fast_rcnn_head(
         model, blob_in, dim_in, spatial_scale_in
     )
     fast_rcnn_heads.add_fast_rcnn_outputs(model, blob_frcn, dim_frcn)
-    if model.train:
-        loss_gradients = fast_rcnn_heads.add_fast_rcnn_losses(model)
-    else:
-        loss_gradients = None
-    return loss_gradients
+    return fast_rcnn_heads.add_fast_rcnn_losses(model) if model.train else None
 
 
 def _add_roi_mask_head(
@@ -269,19 +261,17 @@ def _add_roi_mask_head(
         model, blob_mask_head, dim_mask_head
     )
 
-    if not model.train:  # == inference
-        # Inference uses a cascade of box predictions, then mask predictions.
-        # This requires separate nets for box and mask prediction.
-        # So we extract the mask prediction net, store it as its own network,
-        # then restore model.net to be the bbox-only network
-        model.mask_net, blob_mask = c2_utils.SuffixNet(
-            'mask_net', model.net, len(bbox_net.op), blob_mask
-        )
-        model.net._net = bbox_net
-        loss_gradients = None
-    else:
-        loss_gradients = mask_rcnn_heads.add_mask_rcnn_losses(model, blob_mask)
-    return loss_gradients
+    if model.train:
+        return mask_rcnn_heads.add_mask_rcnn_losses(model, blob_mask)
+    # Inference uses a cascade of box predictions, then mask predictions.
+    # This requires separate nets for box and mask prediction.
+    # So we extract the mask prediction net, store it as its own network,
+    # then restore model.net to be the bbox-only network
+    model.mask_net, blob_mask = c2_utils.SuffixNet(
+        'mask_net', model.net, len(bbox_net.op), blob_mask
+    )
+    model.net._net = bbox_net
+    return None
 
 
 def _add_roi_keypoint_head(
@@ -299,19 +289,17 @@ def _add_roi_keypoint_head(
         model, blob_keypoint_head, dim_keypoint_head
     )
 
-    if not model.train:  # == inference
-        # Inference uses a cascade of box predictions, then keypoint predictions
-        # This requires separate nets for box and keypoint prediction.
-        # So we extract the keypoint prediction net, store it as its own
-        # network, then restore model.net to be the bbox-only network
-        model.keypoint_net, keypoint_blob_out = c2_utils.SuffixNet(
-            'keypoint_net', model.net, len(bbox_net.op), blob_keypoint
-        )
-        model.net._net = bbox_net
-        loss_gradients = None
-    else:
-        loss_gradients = keypoint_rcnn_heads.add_keypoint_losses(model)
-    return loss_gradients
+    if model.train:
+        return keypoint_rcnn_heads.add_keypoint_losses(model)
+    # Inference uses a cascade of box predictions, then keypoint predictions
+    # This requires separate nets for box and keypoint prediction.
+    # So we extract the keypoint prediction net, store it as its own
+    # network, then restore model.net to be the bbox-only network
+    model.keypoint_net, keypoint_blob_out = c2_utils.SuffixNet(
+        'keypoint_net', model.net, len(bbox_net.op), blob_keypoint
+    )
+    model.net._net = bbox_net
+    return None
 
 
 def build_generic_rfcn_model(model, add_conv_body_func, dim_reduce=None):

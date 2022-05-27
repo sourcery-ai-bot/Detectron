@@ -62,18 +62,17 @@ def test_net_on_dataset(multi_gpu=False):
         all_boxes, all_segms, all_keyps = test_net()
     test_timer.toc()
     logger.info('Total inference time: {:.3f}s'.format(test_timer.average_time))
-    results = task_evaluation.evaluate_all(
+    return task_evaluation.evaluate_all(
         dataset, all_boxes, all_segms, all_keyps, output_dir
     )
-    return results
 
 
 def multi_gpu_test_net_on_dataset(num_images, output_dir):
     """Multi-gpu inference on a dataset."""
     binary_dir = envu.get_runtime_dir()
     binary_ext = envu.get_py_bin_ext()
-    binary = os.path.join(binary_dir, 'test_net' + binary_ext)
-    assert os.path.exists(binary), 'Binary \'{}\' not found'.format(binary)
+    binary = os.path.join(binary_dir, f'test_net{binary_ext}')
+    assert os.path.exists(binary), f"Binary '{binary}' not found"
 
     # Run inference in parallel in subprocesses
     # Outputs will be a list of outputs from each subprocess, where the output
@@ -104,7 +103,7 @@ def multi_gpu_test_net_on_dataset(num_images, output_dir):
             cfg=cfg_yaml
         ), det_file
     )
-    logger.info('Wrote detections to: {}'.format(os.path.abspath(det_file)))
+    logger.info(f'Wrote detections to: {os.path.abspath(det_file)}')
 
     return all_boxes, all_segms, all_keyps
 
@@ -208,7 +207,7 @@ def test_net(ind_range=None):
             cfg=cfg_yaml
         ), det_file
     )
-    logger.info('Wrote detections to: {}'.format(os.path.abspath(det_file)))
+    logger.info(f'Wrote detections to: {os.path.abspath(det_file)}')
     return all_boxes, all_segms, all_keyps
 
 

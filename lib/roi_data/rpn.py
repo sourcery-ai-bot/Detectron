@@ -43,11 +43,12 @@ def get_rpn_blob_names(is_training=True):
             # Same format as RPN blobs, but one per FPN level
             for lvl in range(cfg.FPN.RPN_MIN_LEVEL, cfg.FPN.RPN_MAX_LEVEL + 1):
                 blob_names += [
-                    'rpn_labels_int32_wide_fpn' + str(lvl),
-                    'rpn_bbox_targets_wide_fpn' + str(lvl),
-                    'rpn_bbox_inside_weights_wide_fpn' + str(lvl),
-                    'rpn_bbox_outside_weights_wide_fpn' + str(lvl)
+                    f'rpn_labels_int32_wide_fpn{str(lvl)}',
+                    f'rpn_bbox_targets_wide_fpn{str(lvl)}',
+                    f'rpn_bbox_inside_weights_wide_fpn{str(lvl)}',
+                    f'rpn_bbox_outside_weights_wide_fpn{str(lvl)}',
                 ]
+
         else:
             # Single level RPN blobs
             blob_names += [
@@ -106,7 +107,7 @@ def add_rpn_blobs(blobs, im_scales, roidb):
             )
             for i, lvl in enumerate(range(k_min, k_max + 1)):
                 for k, v in rpn_blobs[i].items():
-                    blobs[k + '_fpn' + str(lvl)].append(v)
+                    blobs[f'{k}_fpn{str(lvl)}'].append(v)
         else:
             # Classical RPN, applied to a single feature level
             rpn_blobs = _get_rpn_blobs(
@@ -155,9 +156,9 @@ def _get_rpn_blobs(im_height, im_width, foas, all_anchors, gt_boxes):
         anchors = all_anchors
     num_inside = len(inds_inside)
 
-    logger.debug('total_anchors: {}'.format(total_anchors))
-    logger.debug('inds_inside: {}'.format(num_inside))
-    logger.debug('anchors.shape: {}'.format(anchors.shape))
+    logger.debug(f'total_anchors: {total_anchors}')
+    logger.debug(f'inds_inside: {num_inside}')
+    logger.debug(f'anchors.shape: {anchors.shape}')
 
     # Compute anchor labels:
     # label=1 is positive, 0 is negative, -1 is don't care (ignore)

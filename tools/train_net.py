@@ -145,9 +145,7 @@ def train_model():
         training_stats.LogIterStats(cur_iter, lr)
 
         if (cur_iter + 1) % CHECKPOINT_PERIOD == 0 and cur_iter > start_iter:
-            checkpoints[cur_iter] = os.path.join(
-                output_dir, 'model_iter{}.pkl'.format(cur_iter)
-            )
+            checkpoints[cur_iter] = os.path.join(output_dir, f'model_iter{cur_iter}.pkl')
             nu.save_model_to_weights_file(checkpoints[cur_iter], model)
 
         if cur_iter == start_iter + training_stats.LOG_PERIOD:
@@ -198,11 +196,11 @@ def create_model():
             # Override the initialization weights with the found checkpoint
             cfg.TRAIN.WEIGHTS = os.path.join(output_dir, resume_weights_file)
             logger.info(
-                '========> Resuming from checkpoint {} at start iter {}'.
-                format(cfg.TRAIN.WEIGHTS, start_iter)
+                f'========> Resuming from checkpoint {cfg.TRAIN.WEIGHTS} at start iter {start_iter}'
             )
 
-    logger.info('Building model: {}'.format(cfg.MODEL.TYPE))
+
+    logger.info(f'Building model: {cfg.MODEL.TYPE}')
     model = model_builder.create(cfg.MODEL.TYPE, train=True)
     if cfg.MEMONGER:
         optimize_memory(model)
@@ -214,7 +212,7 @@ def create_model():
 def optimize_memory(model):
     """Save GPU memory through blob sharing."""
     for device in range(cfg.NUM_GPUS):
-        namescope = 'gpu_{}/'.format(device)
+        namescope = f'gpu_{device}/'
         losses = [namescope + l for l in model.losses]
         model.net._net = memonger.share_grad_blobs(
             model.net,
@@ -250,7 +248,7 @@ def setup_model_for_training(model, output_dir):
 def add_model_training_inputs(model):
     """Load the training dataset and attach the training inputs to the model."""
     logger = logging.getLogger(__name__)
-    logger.info('Loading dataset: {}'.format(cfg.TRAIN.DATASETS))
+    logger.info(f'Loading dataset: {cfg.TRAIN.DATASETS}')
     roidb = combined_roidb_for_training(
         cfg.TRAIN.DATASETS, cfg.TRAIN.PROPOSAL_FILES
     )

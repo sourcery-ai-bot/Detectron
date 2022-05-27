@@ -43,5 +43,5 @@ def get_coco_dataset():
         'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
         'scissors', 'teddy bear', 'hair drier', 'toothbrush'
     ]
-    ds.classes = {i: name for i, name in enumerate(classes)}
+    ds.classes = dict(enumerate(classes))
     return ds

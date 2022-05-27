@@ -93,9 +93,7 @@ def evaluate_boxes(dataset, all_boxes, output_dir, use_matlab=False):
         )
         box_results = _voc_eval_to_box_results(voc_eval)
     else:
-        raise NotImplementedError(
-            'No evaluator for dataset: {}'.format(dataset.name)
-        )
+        raise NotImplementedError(f'No evaluator for dataset: {dataset.name}')
     return OrderedDict([(dataset.name, box_results)])
 
 
@@ -124,9 +122,7 @@ def evaluate_masks(dataset, all_boxes, all_segms, output_dir):
         )
         mask_results = _cs_eval_to_mask_results(cs_eval)
     else:
-        raise NotImplementedError(
-            'No evaluator for dataset: {}'.format(dataset.name)
-        )
+        raise NotImplementedError(f'No evaluator for dataset: {dataset.name}')
     return OrderedDict([(dataset.name, mask_results)])
 
 
@@ -166,7 +162,7 @@ def log_box_proposal_results(results):
     """Log bounding box proposal results."""
     for dataset in results.keys():
         keys = results[dataset]['box_proposal'].keys()
-        pad = max([len(k) for k in keys])
+        pad = max(len(k) for k in keys)
         logger.info(dataset)
         for k, v in results[dataset]['box_proposal'].items():
             logger.info('{}: {:.3f}'.format(k.ljust(pad), v))
@@ -177,9 +173,9 @@ def log_copy_paste_friendly_results(results):
     spreadsheet. Lines are prefixed with 'copypaste: ' to make grepping easy.
     """
     for dataset in results.keys():
-        logger.info('copypaste: Dataset: {}'.format(dataset))
+        logger.info(f'copypaste: Dataset: {dataset}')
         for task, metrics in results[dataset].items():
-            logger.info('copypaste: Task: {}'.format(task))
+            logger.info(f'copypaste: Task: {task}')
             metric_names = metrics.keys()
             metric_vals = ['{:.4f}'.format(v) for v in metrics.values()]
             logger.info('copypaste: ' + ','.join(metric_names))
@@ -200,10 +196,9 @@ def check_expected_results(results, atol=0.005, rtol=0.1):
         return
 
     for dataset, task, metric, expected_val in cfg.EXPECTED_RESULTS:
-        assert dataset in results, 'Dataset {} not in results'.format(dataset)
-        assert task in results[dataset], 'Task {} not in results'.format(task)
-        assert metric in results[dataset][task], \
-            'Metric {} not in results'.format(metric)
+        assert dataset in results, f'Dataset {dataset} not in results'
+        assert task in results[dataset], f'Task {task} not in results'
+        assert metric in results[dataset][task], f'Metric {metric} not in results'
         actual_val = results[dataset][task][metric]
         err = abs(actual_val - expected_val)
         tol = atol + rtol * abs(expected_val)
@@ -212,7 +207,7 @@ def check_expected_results(results, atol=0.005, rtol=0.1):
             '{:.3f} vs. {:.3f}, err={:.3f}, tol={:.3f}'
         ).format(dataset, task, metric, actual_val, expected_val, err, tol)
         if err > tol:
-            msg = 'FAIL: ' + msg
+            msg = f'FAIL: {msg}'
             logger.error(msg)
             if cfg.EXPECTED_RESULTS_EMAIL != '':
                 subject = 'Detectron end-to-end test failure'
@@ -238,7 +233,7 @@ def check_expected_results(results, atol=0.005, rtol=0.1):
                     subject, '\n\n'.join(body), cfg.EXPECTED_RESULTS_EMAIL
                 )
         else:
-            msg = 'PASS: ' + msg
+            msg = f'PASS: {msg}'
             logger.info(msg)
 
 

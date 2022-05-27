@@ -177,7 +177,9 @@ def _filter_boxes(boxes, min_size, im_info):
     hs = boxes[:, 3] - boxes[:, 1] + 1
     x_ctr = boxes[:, 0] + ws / 2.
     y_ctr = boxes[:, 1] + hs / 2.
-    keep = np.where(
-        (ws >= min_size) & (hs >= min_size) &
-        (x_ctr < im_info[1]) & (y_ctr < im_info[0]))[0]
-    return keep
+    return np.where(
+        (ws >= min_size)
+        & (hs >= min_size)
+        & (x_ctr < im_info[1])
+        & (y_ctr < im_info[0])
+    )[0]

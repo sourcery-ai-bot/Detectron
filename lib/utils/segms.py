@@ -36,7 +36,7 @@ def flip_segms(segms, height, width):
     """Left/right flip each mask in a list of masks."""
     def _flip_poly(poly, width):
         flipped_poly = np.array(poly)
-        flipped_poly[0::2] = width - np.array(poly[0::2]) - 1
+        flipped_poly[0::2] = width - np.array(poly[::2]) - 1
         return flipped_poly.tolist()
 
     def _flip_rle(rle, height, width):
@@ -105,7 +105,7 @@ def polys_to_mask_wrt_box(polygons, box, M):
     polygons_norm = []
     for poly in polygons:
         p = np.array(poly, dtype=np.float32)
-        p[0::2] = (p[0::2] - box[0]) * M / w
+        p[0::2] = (p[::2] - box[0]) * M / w
         p[1::2] = (p[1::2] - box[1]) * M / h
         polygons_norm.append(p)
 
@@ -188,7 +188,7 @@ def rle_mask_voting(
             soft_mask = np.sum(masks_to_vote, axis=0)
             mask = np.array(soft_mask > 1e-5, dtype=np.uint8)
         else:
-            raise NotImplementedError('Method {} is unknown'.format(method))
+            raise NotImplementedError(f'Method {method} is unknown')
         rle = mask_util.encode(np.array(mask[:, :, np.newaxis], order='F'))[0]
         top_segms_out.append(rle)
 
@@ -224,7 +224,7 @@ def rle_mask_nms(masks, dets, thresh, mode='IOU'):
         all_crowds = [True] * len(masks)
         ious = mask_util.iou(masks, masks, all_crowds)
     else:
-        raise NotImplementedError('Mode {} is unknown'.format(mode))
+        raise NotImplementedError(f'Mode {mode} is unknown')
 
     scores = dets[:, 4]
     order = np.argsort(-scores)

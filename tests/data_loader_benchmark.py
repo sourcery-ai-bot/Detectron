@@ -83,8 +83,7 @@ def parse_args():
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def loader_loop(roi_data_loader):
@@ -114,13 +113,13 @@ def main(opts):
     net.type = 'dag'
     all_blobs = []
     for gpu_id in range(cfg.NUM_GPUS):
-        with core.NameScope('gpu_{}'.format(gpu_id)):
+        with core.NameScope(f'gpu_{gpu_id}'):
             with core.DeviceScope(muji.OnGPU(gpu_id)):
                 for blob_name in blob_names:
                     blob = core.ScopedName(blob_name)
                     all_blobs.append(blob)
                     workspace.CreateBlob(blob)
-                    logger.info('Creating blob: {}'.format(blob))
+                    logger.info(f'Creating blob: {blob}')
                 net.DequeueBlobs(
                     roi_data_loader._blobs_queue_name, blob_names)
     logger.info("Protobuf:\n" + str(net.Proto()))

@@ -19,16 +19,14 @@ class ZeroEvenOpTest(unittest.TestCase):
         op = core.CreateOperator('ZeroEven', ['X'], ['Y'])
         workspace.FeedBlob('X', X)
         workspace.RunOperatorOnce(op)
-        Y = workspace.FetchBlob('Y')
-        return Y
+        return workspace.FetchBlob('Y')
 
     def _run_zero_even_op_gpu(self, X):
         with core.DeviceScope(core.DeviceOption(caffe2_pb2.CUDA, 0)):
             op = core.CreateOperator('ZeroEven', ['X'], ['Y'])
             workspace.FeedBlob('X', X)
         workspace.RunOperatorOnce(op)
-        Y = workspace.FetchBlob('Y')
-        return Y
+        return workspace.FetchBlob('Y')
 
     def test_throws_on_non_1D_arrays(self):
         X = np.zeros((2, 2), dtype=np.float32)
@@ -45,7 +43,7 @@ class ZeroEvenOpTest(unittest.TestCase):
         X = np.array([0, 1, 2, 3, 4], dtype=np.float32)
         Y_exp = np.array([0, 1, 0, 3, 0], dtype=np.float32)
         Y_act = self._run_zero_even_op(X)
-        np.testing.assert_allclose(Y_act[0::2], Y_exp[0::2])
+        np.testing.assert_allclose(Y_act[::2], Y_exp[::2])
 
     def test_preserves_vals_at_odd_inds(self):
         X = np.array([0, 1, 2, 3, 4], dtype=np.float32)
@@ -82,7 +80,7 @@ class ZeroEvenOpTest(unittest.TestCase):
         X = np.array([0, 1, 2, 3, 4], dtype=np.float32)
         Y_exp = np.array([0, 1, 0, 3, 0], dtype=np.float32)
         Y_act = self._run_zero_even_op_gpu(X)
-        np.testing.assert_allclose(Y_act[0::2], Y_exp[0::2])
+        np.testing.assert_allclose(Y_act[::2], Y_exp[::2])
 
     def test_gpu_preserves_vals_at_odd_inds(self):
         X = np.array([0, 1, 2, 3, 4], dtype=np.float32)

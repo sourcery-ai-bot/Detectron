@@ -36,8 +36,7 @@ def parse_rec(filename):
     tree = ET.parse(filename)
     objects = []
     for obj in tree.findall('object'):
-        obj_struct = {}
-        obj_struct['name'] = obj.find('name').text
+        obj_struct = {'name': obj.find('name').text}
         obj_struct['pose'] = obj.find('pose').text
         obj_struct['truncated'] = int(obj.find('truncated').text)
         obj_struct['difficult'] = int(obj.find('difficult').text)
@@ -59,10 +58,7 @@ def voc_ap(rec, prec, use_07_metric=False):
         # 11 point metric
         ap = 0.
         for t in np.arange(0., 1.1, 0.1):
-            if np.sum(rec >= t) == 0:
-                p = 0
-            else:
-                p = np.max(prec[rec >= t])
+            p = 0 if np.sum(rec >= t) == 0 else np.max(prec[rec >= t])
             ap = ap + p / 11.
     else:
         # correct AP calculation
@@ -119,7 +115,7 @@ def voc_eval(detpath,
     if not os.path.isdir(cachedir):
         os.mkdir(cachedir)
     imageset = os.path.splitext(os.path.basename(imagesetfile))[0]
-    cachefile = os.path.join(cachedir, imageset + '_annots.pkl')
+    cachefile = os.path.join(cachedir, f'{imageset}_annots.pkl')
     # read list of images
     with open(imagesetfile, 'r') as f:
         lines = f.readlines()
@@ -201,16 +197,15 @@ def voc_eval(detpath,
             ovmax = np.max(overlaps)
             jmax = np.argmax(overlaps)
 
-        if ovmax > ovthresh:
-            if not R['difficult'][jmax]:
-                if not R['det'][jmax]:
-                    tp[d] = 1.
-                    R['det'][jmax] = 1
-                else:
-                    fp[d] = 1.
-        else:
+        if (
+            ovmax > ovthresh
+            and not R['difficult'][jmax]
+            and not R['det'][jmax]
+        ):
+            tp[d] = 1.
+            R['det'][jmax] = 1
+        elif ovmax > ovthresh and not R['difficult'][jmax] or ovmax <= ovthresh:
             fp[d] = 1.
-
     # compute precision recall
     fp = np.cumsum(fp)
     tp = np.cumsum(tp)

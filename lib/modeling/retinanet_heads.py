@@ -35,29 +35,22 @@ def get_retinanet_bias_init(model):
     """
     prior_prob = cfg.RETINANET.PRIOR_PROB
     scales_per_octave = cfg.RETINANET.SCALES_PER_OCTAVE
-    aspect_ratios = len(cfg.RETINANET.ASPECT_RATIOS)
-    if cfg.RETINANET.SOFTMAX:
-        # Multiclass softmax case
-        bias = np.zeros((model.num_classes, 1), dtype=np.float32)
-        bias[0] = np.log(
-            (model.num_classes - 1) * (1 - prior_prob) / (prior_prob)
-        )
-        bias = np.vstack(
-            [bias for _ in range(scales_per_octave * aspect_ratios)]
-        )
-        bias_init = (
-            'GivenTensorFill', {
-                'values': bias.astype(dtype=np.float32)
-            }
-        )
-    else:
+    if not cfg.RETINANET.SOFTMAX:
         # Per-class sigmoid (binary classification) case
-        bias_init = (
-            'ConstantFill', {
-                'value': -np.log((1 - prior_prob) / prior_prob)
-            }
-        )
-    return bias_init
+        return 'ConstantFill', {
+            'value': -np.log((1 - prior_prob) / prior_prob)
+        }
+
+    # Multiclass softmax case
+    bias = np.zeros((model.num_classes, 1), dtype=np.float32)
+    bias[0] = np.log(
+        (model.num_classes - 1) * (1 - prior_prob) / (prior_prob)
+    )
+    aspect_ratios = len(cfg.RETINANET.ASPECT_RATIOS)
+    bias = np.vstack(
+        [bias for _ in range(scales_per_octave * aspect_ratios)]
+    )
+    return 'GivenTensorFill', {'values': bias.astype(dtype=np.float32)}
 
 
 def add_fpn_retinanet_outputs(model, blobs_in, dim_in, spatial_scales):
@@ -91,76 +84,73 @@ def add_fpn_retinanet_outputs(model, blobs_in, dim_in, spatial_scales):
         bl_in = blobs_in[k_max - lvl]  # blobs_in is in reversed order
         # classification tower stack convolution starts
         for nconv in range(cfg.RETINANET.NUM_CONVS):
-            suffix = 'n{}_fpn{}'.format(nconv, lvl)
+            suffix = f'n{nconv}_fpn{lvl}'
             dim_in, dim_out = dim_in, dim_in
             if lvl == k_min:
                 bl_out = model.Conv(
                     bl_in,
-                    'retnet_cls_conv_' + suffix,
+                    f'retnet_cls_conv_{suffix}',
                     dim_in,
                     dim_out,
                     3,
                     stride=1,
                     pad=1,
-                    weight_init=('GaussianFill', {
-                        'std': 0.01
-                    }),
-                    bias_init=('ConstantFill', {
-                        'value': 0.
-                    })
+                    weight_init=('GaussianFill', {'std': 0.01}),
+                    bias_init=('ConstantFill', {'value': 0.0}),
                 )
+
             else:
                 bl_out = model.ConvShared(
                     bl_in,
-                    'retnet_cls_conv_' + suffix,
+                    f'retnet_cls_conv_{suffix}',
                     dim_in,
                     dim_out,
                     3,
                     stride=1,
                     pad=1,
-                    weight='retnet_cls_conv_n{}_fpn{}_w'.format(nconv, k_min),
-                    bias='retnet_cls_conv_n{}_fpn{}_b'.format(nconv, k_min)
+                    weight=f'retnet_cls_conv_n{nconv}_fpn{k_min}_w',
+                    bias=f'retnet_cls_conv_n{nconv}_fpn{k_min}_b',
                 )
+
             bl_in = model.Relu(bl_out, bl_out)
             bl_feat = bl_in
         # cls tower stack convolution ends. Add the logits layer now
         if lvl == k_min:
             retnet_cls_pred = model.Conv(
                 bl_feat,
-                'retnet_cls_pred_fpn{}'.format(lvl),
+                f'retnet_cls_pred_fpn{lvl}',
                 dim_in,
                 cls_pred_dim * A,
                 3,
                 pad=1,
                 stride=1,
-                weight_init=('GaussianFill', {
-                    'std': 0.01
-                }),
-                bias_init=bias_init
+                weight_init=('GaussianFill', {'std': 0.01}),
+                bias_init=bias_init,
             )
+
         else:
             retnet_cls_pred = model.ConvShared(
                 bl_feat,
-                'retnet_cls_pred_fpn{}'.format(lvl),
+                f'retnet_cls_pred_fpn{lvl}',
                 dim_in,
                 cls_pred_dim * A,
                 3,
                 pad=1,
                 stride=1,
-                weight='retnet_cls_pred_fpn{}_w'.format(k_min),
-                bias='retnet_cls_pred_fpn{}_b'.format(k_min)
+                weight=f'retnet_cls_pred_fpn{k_min}_w',
+                bias=f'retnet_cls_pred_fpn{k_min}_b',
             )
+
         if not model.train:
             if cfg.RETINANET.SOFTMAX:
                 model.net.GroupSpatialSoftmax(
                     retnet_cls_pred,
-                    'retnet_cls_prob_fpn{}'.format(lvl),
-                    num_classes=cls_pred_dim
+                    f'retnet_cls_prob_fpn{lvl}',
+                    num_classes=cls_pred_dim,
                 )
+
             else:
-                model.net.Sigmoid(
-                    retnet_cls_pred, 'retnet_cls_prob_fpn{}'.format(lvl)
-                )
+                model.net.Sigmoid(retnet_cls_pred, f'retnet_cls_prob_fpn{lvl}')
         if cfg.RETINANET.SHARE_CLS_BBOX_TOWER:
             bbox_feat_list.append(bl_feat)
 
@@ -172,28 +162,25 @@ def add_fpn_retinanet_outputs(model, blobs_in, dim_in, spatial_scales):
         for lvl in range(k_min, k_max + 1):
             bl_in = blobs_in[k_max - lvl]  # blobs_in is in reversed order
             for nconv in range(cfg.RETINANET.NUM_CONVS):
-                suffix = 'n{}_fpn{}'.format(nconv, lvl)
+                suffix = f'n{nconv}_fpn{lvl}'
                 dim_in, dim_out = dim_in, dim_in
                 if lvl == k_min:
                     bl_out = model.Conv(
                         bl_in,
-                        'retnet_bbox_conv_' + suffix,
+                        f'retnet_bbox_conv_{suffix}',
                         dim_in,
                         dim_out,
                         3,
                         stride=1,
                         pad=1,
-                        weight_init=('GaussianFill', {
-                            'std': 0.01
-                        }),
-                        bias_init=('ConstantFill', {
-                            'value': 0.
-                        })
+                        weight_init=('GaussianFill', {'std': 0.01}),
+                        bias_init=('ConstantFill', {'value': 0.0}),
                     )
+
                 else:
                     bl_out = model.ConvShared(
                         bl_in,
-                        'retnet_bbox_conv_' + suffix,
+                        f'retnet_bbox_conv_{suffix}',
                         dim_in,
                         dim_out,
                         3,
@@ -204,8 +191,9 @@ def add_fpn_retinanet_outputs(model, blobs_in, dim_in, spatial_scales):
                         ),
                         bias='retnet_bbox_conv_n{}_fpn{}_b'.format(
                             nconv, k_min
-                        )
+                        ),
                     )
+
                 bl_in = model.Relu(bl_out, bl_out)
                 # Add octave scales and aspect ratio
                 # At least 1 convolution for dealing different aspect ratios
@@ -257,53 +245,56 @@ def add_fpn_retinanet_losses(model):
     # bbox regression loss - SelectSmoothL1Loss for multiple anchors at a location
     # ==========================================================================
     for lvl in range(k_min, k_max + 1):
-        suffix = 'fpn{}'.format(lvl)
+        suffix = f'fpn{lvl}'
         bbox_loss = model.net.SelectSmoothL1Loss(
             [
-                'retnet_bbox_pred_' + suffix,
-                'retnet_roi_bbox_targets_' + suffix,
-                'retnet_roi_fg_bbox_locs_' + suffix, 'retnet_fg_num'
+                f'retnet_bbox_pred_{suffix}',
+                f'retnet_roi_bbox_targets_{suffix}',
+                f'retnet_roi_fg_bbox_locs_{suffix}',
+                'retnet_fg_num',
             ],
-            'retnet_loss_bbox_' + suffix,
+            f'retnet_loss_bbox_{suffix}',
             beta=cfg.RETINANET.BBOX_REG_BETA,
-            scale=model.GetLossScale() * cfg.RETINANET.BBOX_REG_WEIGHT
+            scale=model.GetLossScale() * cfg.RETINANET.BBOX_REG_WEIGHT,
         )
+
         gradients.append(bbox_loss)
-        losses.append('retnet_loss_bbox_' + suffix)
+        losses.append(f'retnet_loss_bbox_{suffix}')
 
     # ==========================================================================
     # cls loss - depends on softmax/sigmoid outputs
     # ==========================================================================
     for lvl in range(k_min, k_max + 1):
-        suffix = 'fpn{}'.format(lvl)
-        cls_lvl_logits = 'retnet_cls_pred_' + suffix
+        suffix = f'fpn{lvl}'
+        cls_lvl_logits = f'retnet_cls_pred_{suffix}'
         if not cfg.RETINANET.SOFTMAX:
             cls_focal_loss = model.net.SigmoidFocalLoss(
                 [
-                    cls_lvl_logits, 'retnet_cls_labels_' + suffix,
-                    'retnet_fg_num'
+                    cls_lvl_logits,
+                    f'retnet_cls_labels_{suffix}',
+                    'retnet_fg_num',
                 ],
-                ['fl_{}'.format(suffix)],
-                gamma=cfg.RETINANET.LOSS_GAMMA,
-                alpha=cfg.RETINANET.LOSS_ALPHA,
-                scale=model.GetLossScale()
-            )
-            gradients.append(cls_focal_loss)
-            losses.append('fl_{}'.format(suffix))
-        else:
-            cls_focal_loss, gated_prob = model.net.SoftmaxFocalLoss(
-                [
-                    cls_lvl_logits, 'retnet_cls_labels_' + suffix,
-                    'retnet_fg_num'
-                ],
-                ['fl_{}'.format(suffix), 'retnet_prob_{}'.format(suffix)],
+                [f'fl_{suffix}'],
                 gamma=cfg.RETINANET.LOSS_GAMMA,
                 alpha=cfg.RETINANET.LOSS_ALPHA,
                 scale=model.GetLossScale(),
             )
-            gradients.append(cls_focal_loss)
-            losses.append('fl_{}'.format(suffix))
 
-    loss_gradients.update(blob_utils.get_loss_gradients(model, gradients))
+        else:
+            cls_focal_loss, gated_prob = model.net.SoftmaxFocalLoss(
+                [
+                    cls_lvl_logits,
+                    f'retnet_cls_labels_{suffix}',
+                    'retnet_fg_num',
+                ],
+                [f'fl_{suffix}', f'retnet_prob_{suffix}'],
+                gamma=cfg.RETINANET.LOSS_GAMMA,
+                alpha=cfg.RETINANET.LOSS_ALPHA,
+                scale=model.GetLossScale(),
+            )
+
+        gradients.append(cls_focal_loss)
+        losses.append(f'fl_{suffix}')
+    loss_gradients |= blob_utils.get_loss_gradients(model, gradients)
     model.AddLosses(losses)
     return loss_gradients

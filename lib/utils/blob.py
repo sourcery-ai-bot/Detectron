@@ -78,8 +78,8 @@ def prep_im_for_blob(im, pixel_means, target_sizes, max_size):
     im = im.astype(np.float32, copy=False)
     im -= pixel_means
     im_shape = im.shape
-    im_size_min = np.min(im_shape[0:2])
-    im_size_max = np.max(im_shape[0:2])
+    im_size_min = np.min(im_shape[:2])
+    im_size_max = np.max(im_shape[:2])
 
     ims = []
     im_scales = []
@@ -132,7 +132,7 @@ def get_loss_gradients(model, loss_blobs):
     """Generate a gradient of 1 for each loss specified in 'loss_blobs'"""
     loss_gradients = {}
     for b in loss_blobs:
-        loss_grad = model.net.ConstantFill(b, [b + '_grad'], value=1.0)
+        loss_grad = model.net.ConstantFill(b, [f'{b}_grad'], value=1.0)
         loss_gradients[str(b)] = str(loss_grad)
     return loss_gradients
 

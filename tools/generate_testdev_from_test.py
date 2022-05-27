@@ -49,12 +49,11 @@ def parse_args():
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def convert(json_file, output_dir):
-    print('Reading: {}'.format(json_file))
+    print(f'Reading: {json_file}')
     with open(json_file, 'r') as fid:
         dt = json.load(fid)
     print('done!')
@@ -64,14 +63,14 @@ def convert(json_file, output_dir):
         info_test = json.load(fid)
     image_test = info_test['images']
     image_test_id = [i['id'] for i in image_test]
-    print('{} has {} images'.format(test_image_info, len(image_test_id)))
+    print(f'{test_image_info} has {len(image_test_id)} images')
 
     test_dev_image_info = DATASETS['coco_2017_test-dev'][ANN_FN]
     with open(test_dev_image_info, 'r') as fid:
         info_testdev = json.load(fid)
     image_testdev = info_testdev['images']
     image_testdev_id = [i['id'] for i in image_testdev]
-    print('{} has {} images'.format(test_dev_image_info, len(image_testdev_id)))
+    print(f'{test_dev_image_info} has {len(image_testdev_id)} images')
 
     dt_testdev = []
     print('Filtering test-dev from test...')
@@ -79,17 +78,17 @@ def convert(json_file, output_dir):
     t.tic()
     for i in range(len(dt)):
         if i % 1000 == 0:
-            print('{}/{}'.format(i, len(dt)))
+            print(f'{i}/{len(dt)}')
         if dt[i]['image_id'] in image_testdev_id:
             dt_testdev.append(dt[i])
     print('Done filtering ({:2}s)!'.format(t.toc()))
 
     filename, file_extension = os.path.splitext(os.path.basename(json_file))
-    filename = filename + '_test-dev'
+    filename = f'{filename}_test-dev'
     filename = os.path.join(output_dir, filename + file_extension)
     with open(filename, 'w') as fid:
         info_test = json.dump(dt_testdev, fid)
-    print('Done writing: {}!'.format(filename))
+    print(f'Done writing: {filename}!')
 
 
 if __name__ == '__main__':

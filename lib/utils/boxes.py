@@ -109,8 +109,7 @@ def filter_small_boxes(boxes, min_size):
     """Keep boxes with width and height both greater than min_size."""
     w = boxes[:, 2] - boxes[:, 0] + 1
     h = boxes[:, 3] - boxes[:, 1] + 1
-    keep = np.where((w > min_size) & (h > min_size))[0]
-    return keep
+    return np.where((w > min_size) & (h > min_size))[0]
 
 
 def clip_boxes_to_image(boxes, height, width):
@@ -219,9 +218,9 @@ def bbox_transform_inv(boxes, gt_boxes, weights=(1.0, 1.0, 1.0, 1.0)):
     targets_dw = ww * np.log(gt_widths / ex_widths)
     targets_dh = wh * np.log(gt_heights / ex_heights)
 
-    targets = np.vstack((targets_dx, targets_dy, targets_dw,
-                         targets_dh)).transpose()
-    return targets
+    return np.vstack(
+        (targets_dx, targets_dy, targets_dw, targets_dh)
+    ).transpose()
 
 
 def expand_boxes(boxes, scale):
@@ -304,18 +303,14 @@ def box_voting(top_dets, all_dets, thresh, scoring_method='ID', beta=1.0):
         elif scoring_method == 'QUASI_SUM':
             top_dets_out[k, 4] = ws.sum() / float(len(ws))**beta
         else:
-            raise NotImplementedError(
-                'Unknown scoring method {}'.format(scoring_method)
-            )
+            raise NotImplementedError(f'Unknown scoring method {scoring_method}')
 
     return top_dets_out
 
 
 def nms(dets, thresh):
     """Apply classic DPM-style greedy NMS."""
-    if dets.shape[0] == 0:
-        return []
-    return cython_nms.nms(dets, thresh)
+    return [] if dets.shape[0] == 0 else cython_nms.nms(dets, thresh)
 
 
 def soft_nms(
@@ -326,7 +321,7 @@ def soft_nms(
         return dets, []
 
     methods = {'hard': 0, 'linear': 1, 'gaussian': 2}
-    assert method in methods, 'Unknown soft_nms method: {}'.format(method)
+    assert method in methods, f'Unknown soft_nms method: {method}'
 
     dets, keep = cython_nms.soft_nms(
         np.ascontiguousarray(dets, dtype=np.float32),

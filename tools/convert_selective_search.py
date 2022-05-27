@@ -19,6 +19,7 @@
 file format.
 """
 
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -46,7 +47,7 @@ if __name__ == '__main__':
     ids = []
     for i in range(raw_data.shape[0]):
         if i % 1000 == 0:
-            print('{}/{}'.format(i + 1, len(roidb)))
+            print(f'{i + 1}/{len(roidb)}')
         # selective search boxes are 1-indexed and (y1, x1, y2, x2)
         i_boxes = raw_data[i][:, (1, 0, 3, 2)] - 1
         boxes.append(i_boxes.astype(np.float32))

@@ -69,13 +69,12 @@ class DetectionModelHelper(cnn.CNNModelHelper):
         GPU id.
         """
         return [
-            p for p in self.params
-            if (
-                p in self.param_to_grad and   # p has a gradient
-                p not in self.do_not_update_params and  # not on the blacklist
-                (gpu_id == -1 or  # filter for gpu assignment, if gpu_id set
-                 str(p).find('gpu_{}'.format(gpu_id)) == 0)
-            )]
+            p
+            for p in self.params
+            if p in self.param_to_grad
+            and p not in self.do_not_update_params
+            and (gpu_id == -1 or str(p).find(f'gpu_{gpu_id}') == 0)
+        ]
 
     def AffineChannel(self, blob_in, blob_out, dim, inplace=False):
         """Affine transformation to replace BN in networks where BN cannot be
@@ -87,17 +86,23 @@ class DetectionModelHelper(cnn.CNNModelHelper):
         param_prefix = blob_out
 
         scale = self.create_param(
-            param_name=param_prefix + '_s',
-            initializer=initializers.Initializer("ConstantFill", value=1.),
+            param_name=f'{param_prefix}_s',
+            initializer=initializers.Initializer("ConstantFill", value=1.0),
             tags=ParameterTags.WEIGHT,
-            shape=[dim, ],
+            shape=[
+                dim,
+            ],
         )
+
         bias = self.create_param(
-            param_name=param_prefix + '_b',
-            initializer=initializers.Initializer("ConstantFill", value=0.),
+            param_name=f'{param_prefix}_b',
+            initializer=initializers.Initializer("ConstantFill", value=0.0),
             tags=ParameterTags.BIAS,
-            shape=[dim, ],
+            shape=[
+                dim,
+            ],
         )
+
         if inplace:
             return self.net.AffineChannel([blob_in, scale, bias], blob_in)
         else:
@@ -200,10 +205,8 @@ class DetectionModelHelper(cnn.CNNModelHelper):
         k_min = cfg.FPN.RPN_MIN_LEVEL
 
         # Prepare input blobs
-        rois_names = ['rpn_rois_fpn' + str(l) for l in range(k_min, k_max + 1)]
-        score_names = [
-            'rpn_roi_probs_fpn' + str(l) for l in range(k_min, k_max + 1)
-        ]
+        rois_names = [f'rpn_rois_fpn{str(l)}' for l in range(k_min, k_max + 1)]
+        score_names = [f'rpn_roi_probs_fpn{str(l)}' for l in range(k_min, k_max + 1)]
         blobs_in = rois_names + score_names
         if self.train:
             blobs_in += ['roidb', 'im_info']
@@ -218,11 +221,9 @@ class DetectionModelHelper(cnn.CNNModelHelper):
         )
         blobs_out = [core.ScopedBlobReference(b) for b in blobs_out]
 
-        outputs = self.net.Python(
+        return self.net.Python(
             CollectAndDistributeFpnRpnProposalsOp(self.train).forward
         )(blobs_in, blobs_out, name=name)
-
-        return outputs
 
     def DropoutIfTraining(self, blob_in, dropout_rate):
         """Add dropout to blob_in if the model is in training mode and
@@ -251,8 +252,7 @@ class DetectionModelHelper(cnn.CNNModelHelper):
           - Use of FPN or not
           - Specifics of the transform method
         """
-        assert method in {'RoIPoolF', 'RoIAlign'}, \
-            'Unknown pooling method: {}'.format(method)
+        assert method in {'RoIPoolF', 'RoIAlign'}, f'Unknown pooling method: {method}'
         has_argmax = (method == 'RoIPoolF')
         if isinstance(blobs_in, list):
             # FPN case: add RoIFeatureTransform to each FPN level
@@ -263,10 +263,10 @@ class DetectionModelHelper(cnn.CNNModelHelper):
             for lvl in range(k_min, k_max + 1):
                 bl_in = blobs_in[k_max - lvl]  # blobs_in is in reversed order
                 sc = spatial_scale[k_max - lvl]  # in reversed order
-                bl_rois = blob_rois + '_fpn' + str(lvl)
-                bl_out = blob_out + '_fpn' + str(lvl)
+                bl_rois = f'{blob_rois}_fpn{str(lvl)}'
+                bl_out = f'{blob_out}_fpn{str(lvl)}'
                 bl_out_list.append(bl_out)
-                bl_argmax = ['_argmax_' + bl_out] if has_argmax else []
+                bl_argmax = [f'_argmax_{bl_out}'] if has_argmax else []
                 self.net.__getattr__(method)(
                     [bl_in, bl_rois], [bl_out] + bl_argmax,
                     pooled_w=resolution,
@@ -277,27 +277,29 @@ class DetectionModelHelper(cnn.CNNModelHelper):
             # The pooled features from all levels are concatenated along the
             # batch dimension into a single 4D tensor.
             xform_shuffled, _ = self.net.Concat(
-                bl_out_list, [blob_out + '_shuffled', '_concat_' + blob_out],
-                axis=0
+                bl_out_list,
+                [f'{blob_out}_shuffled', f'_concat_{blob_out}'],
+                axis=0,
             )
+
             # Unshuffle to match rois from dataloader
-            restore_bl = blob_rois + '_idx_restore_int32'
-            xform_out = self.net.BatchPermutation(
+            restore_bl = f'{blob_rois}_idx_restore_int32'
+            return self.net.BatchPermutation(
                 [xform_shuffled, restore_bl], blob_out
             )
+
         else:
             # Single feature level
-            bl_argmax = ['_argmax_' + blob_out] if has_argmax else []
+            bl_argmax = [f'_argmax_{blob_out}'] if has_argmax else []
             # sampling_ratio is ignored for RoIPoolF
-            xform_out = self.net.__getattr__(method)(
-                [blobs_in, blob_rois], [blob_out] + bl_argmax,
+            return self.net.__getattr__(method)(
+                [blobs_in, blob_rois],
+                [blob_out] + bl_argmax,
                 pooled_w=resolution,
                 pooled_h=resolution,
                 spatial_scale=spatial_scale,
-                sampling_ratio=sampling_ratio
+                sampling_ratio=sampling_ratio,
             )
-        # Only return the first blob (the transformed features)
-        return xform_out
 
     def ConvShared(
         self,
@@ -312,9 +314,7 @@ class DetectionModelHelper(cnn.CNNModelHelper):
     ):
         """Add conv op that shares weights and/or biases with another conv op.
         """
-        use_bias = (
-            False if ('no_bias' in kwargs and kwargs['no_bias']) else True
-        )
+        use_bias = 'no_bias' not in kwargs or not kwargs['no_bias']
 
         if self.use_cudnn:
             kwargs['engine'] = 'CUDNN'
@@ -322,11 +322,7 @@ class DetectionModelHelper(cnn.CNNModelHelper):
             if self.ws_nbytes_limit:
                 kwargs['ws_nbytes_limit'] = self.ws_nbytes_limit
 
-        if use_bias:
-            blobs_in = [blob_in, weight, bias]
-        else:
-            blobs_in = [blob_in, weight]
-
+        blobs_in = [blob_in, weight, bias] if use_bias else [blob_in, weight]
         if 'no_bias' in kwargs:
             del kwargs['no_bias']
 
@@ -349,10 +345,7 @@ class DetectionModelHelper(cnn.CNNModelHelper):
 
         def upsample_filt(size):
             factor = (size + 1) // 2
-            if size % 2 == 1:
-                center = factor - 1
-            else:
-                center = factor - 0.5
+            center = factor - 1 if size % 2 == 1 else factor - 0.5
             og = np.ogrid[:size, :size]
             return ((1 - abs(og[0] - center) / factor) *
                     (1 - abs(og[1] - center) / factor))
@@ -405,10 +398,9 @@ class DetectionModelHelper(cnn.CNNModelHelper):
             bias_init=bias_init,
             no_bias=1
         )
-        blob_out = self.AffineChannel(
+        return self.AffineChannel(
             conv_blob, prefix + suffix, dim=dim_out, inplace=inplace
         )
-        return blob_out
 
     def DisableCudnn(self):
         self.prev_use_cudnn = self.use_cudnn
@@ -442,8 +434,7 @@ class DetectionModelHelper(cnn.CNNModelHelper):
         """
         for i in range(cfg.NUM_GPUS):
             with c2_utils.CudaScope(i):
-                workspace.FeedBlob(
-                    'gpu_{}/lr'.format(i), np.array([new_lr], dtype=np.float32))
+                workspace.FeedBlob(f'gpu_{i}/lr', np.array([new_lr], dtype=np.float32))
         ratio = _get_lr_change_ratio(cur_lr, new_lr)
         if cfg.SOLVER.SCALE_MOMENTUM and cur_lr > 1e-7 and \
                 ratio > cfg.SOLVER.SCALE_MOMENTUM_THRESHOLD:
@@ -467,8 +458,12 @@ class DetectionModelHelper(cnn.CNNModelHelper):
             with c2_utils.CudaScope(i):
                 for param in self.TrainableParams(gpu_id=i):
                     op = core.CreateOperator(
-                        'Scale', [param + '_momentum'], [param + '_momentum'],
-                        scale=correction)
+                        'Scale',
+                        [f'{param}_momentum'],
+                        [f'{param}_momentum'],
+                        scale=correction,
+                    )
+
                     workspace.RunOperatorOnce(op)
 
     def GetLossScale(self):
@@ -493,7 +488,6 @@ class DetectionModelHelper(cnn.CNNModelHelper):
 
 def _get_lr_change_ratio(cur_lr, new_lr):
     eps = 1e-10
-    ratio = np.max(
+    return np.max(
         (new_lr / np.max((cur_lr, eps)), cur_lr / np.max((new_lr, eps)))
     )
-    return ratio

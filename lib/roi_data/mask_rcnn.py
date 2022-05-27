@@ -116,11 +116,11 @@ def _expand_to_class_specific_mask_targets(masks, mask_class_labels):
 
     for i in range(masks.shape[0]):
         cls = int(mask_class_labels[i])
-        start = M**2 * cls
-        end = start + M**2
         # Ignore background instance
         # (only happens when there is no fg samples in an image)
         if cls > 0:
+            start = M**2 * cls
+            end = start + M**2
             mask_targets[i, start:end] = masks[i, :]
 
     return mask_targets

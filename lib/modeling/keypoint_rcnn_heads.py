@@ -65,11 +65,7 @@ def add_keypoint_outputs(model, blob_in, dim):
         model.Relu('kps_deconv', 'kps_deconv')
         dim = cfg.KRCNN.DECONV_DIM
 
-    if upsample_heatmap:
-        blob_name = 'kps_score_lowres'
-    else:
-        blob_name = 'kps_score'
-
+    blob_name = 'kps_score_lowres' if upsample_heatmap else 'kps_score'
     if cfg.KRCNN.USE_DECONV_OUTPUT:
         # Use ConvTranspose to predict heatmaps; results in 2x upsampling
         blob_out = model.ConvTranspose(
@@ -202,15 +198,16 @@ def add_roi_pose_head_v1convX(model, blob_in, dim_in, spatial_scale):
     for i in range(cfg.KRCNN.NUM_STACKED_CONVS):
         current = model.Conv(
             current,
-            'conv_fcn' + str(i + 1),
+            f'conv_fcn{str(i + 1)}',
             dim_in,
             hidden_dim,
             kernel_size,
             stride=1,
             pad=pad_size,
             weight_init=(cfg.KRCNN.CONV_INIT, {'std': 0.01}),
-            bias_init=('ConstantFill', {'value': 0.})
+            bias_init=('ConstantFill', {'value': 0.0}),
         )
+
         current = model.Relu(current, current)
         dim_in = hidden_dim
 

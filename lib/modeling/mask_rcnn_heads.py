@@ -141,15 +141,16 @@ def mask_rcnn_fcn_head_v1upXconvs(
     for i in range(num_convs):
         current = model.Conv(
             current,
-            '_[mask]_fcn' + str(i + 1),
+            f'_[mask]_fcn{str(i + 1)}',
             dim_in,
             dim_inner,
             kernel=3,
             pad=1 * dilation,
             stride=1,
             weight_init=(cfg.MRCNN.CONV_INIT, {'std': 0.001}),
-            bias_init=('ConstantFill', {'value': 0.})
+            bias_init=('ConstantFill', {'value': 0.0}),
         )
+
         current = model.Relu(current, current)
         dim_in = dim_inner
 

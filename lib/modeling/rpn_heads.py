@@ -131,8 +131,9 @@ def add_single_scale_rpn_losses(model):
     )
     for key in ('targets', 'inside_weights', 'outside_weights'):
         model.net.SpatialNarrowAs(
-            ['rpn_bbox_' + key + '_wide', 'rpn_bbox_pred'], 'rpn_bbox_' + key
+            [f'rpn_bbox_{key}_wide', 'rpn_bbox_pred'], f'rpn_bbox_{key}'
         )
+
     loss_rpn_cls = model.net.SigmoidCrossEntropyLoss(
         ['rpn_cls_logits', 'rpn_labels_int32'],
         'loss_rpn_cls',

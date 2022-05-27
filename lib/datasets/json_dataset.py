@@ -54,13 +54,16 @@ class JsonDataset(object):
     """A class representing a COCO json dataset."""
 
     def __init__(self, name):
-        assert name in DATASETS.keys(), \
-            'Unknown dataset name: {}'.format(name)
-        assert os.path.exists(DATASETS[name][IM_DIR]), \
-            'Image directory \'{}\' not found'.format(DATASETS[name][IM_DIR])
-        assert os.path.exists(DATASETS[name][ANN_FN]), \
-            'Annotation file \'{}\' not found'.format(DATASETS[name][ANN_FN])
-        logger.debug('Creating: {}'.format(name))
+        assert name in DATASETS.keys(), f'Unknown dataset name: {name}'
+        assert os.path.exists(
+            DATASETS[name][IM_DIR]
+        ), f"Image directory '{DATASETS[name][IM_DIR]}' not found"
+
+        assert os.path.exists(
+            DATASETS[name][ANN_FN]
+        ), f"Annotation file '{DATASETS[name][ANN_FN]}' not found"
+
+        logger.debug(f'Creating: {name}')
         self.name = name
         self.image_directory = DATASETS[name][IM_DIR]
         self.image_prefix = (
@@ -252,7 +255,7 @@ class JsonDataset(object):
         self, roidb, proposal_file, min_proposal_size, top_k, crowd_thresh
     ):
         """Add proposals from a proposals file to an roidb."""
-        logger.info('Loading proposals from: {}'.format(proposal_file))
+        logger.info(f'Loading proposals from: {proposal_file}')
         with open(proposal_file, 'r') as f:
             proposals = pickle.load(f)
         id_field = 'indexes' if 'indexes' in proposals else 'ids'  # compat fix
@@ -313,7 +316,7 @@ class JsonDataset(object):
         if 'keypoints' not in obj:
             return None
         kp = np.array(obj['keypoints'])
-        x = kp[0::3]  # 0-indexed x coordinates
+        x = kp[::3]
         y = kp[1::3]  # 0-indexed y coordinates
         # 0: not labeled; 1: labeled, not inside mask;
         # 2: labeled and inside mask

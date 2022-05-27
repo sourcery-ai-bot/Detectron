@@ -77,5 +77,4 @@ def setup_logging(name):
     # logging.basicConfig() from blocking our logging setup
     logging.root.handlers = []
     logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout)
-    logger = logging.getLogger(name)
-    return logger
+    return logging.getLogger(name)

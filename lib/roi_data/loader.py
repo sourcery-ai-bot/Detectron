@@ -83,7 +83,7 @@ class RoIDataLoader(object):
         self._blobs_queue_capacity = blobs_queue_capacity
         # Random queue name in case one instantiates multple RoIDataLoaders
         self._loader_id = uuid.uuid4()
-        self._blobs_queue_name = 'roi_blobs_queue_{}'.format(self._loader_id)
+        self._blobs_queue_name = f'roi_blobs_queue_{self._loader_id}'
         # Loader threads construct (partial) minibatches and put them on the
         # minibatch queue
         self._num_loaders = num_loaders
@@ -103,9 +103,11 @@ class RoIDataLoader(object):
                 # self.get_output_names
                 ordered_blobs = OrderedDict()
                 for key in self.get_output_names():
-                    assert blobs[key].dtype in (np.int32, np.float32), \
-                        'Blob {} of dtype {} must have dtype of ' \
-                        'np.int32 or np.float32'.format(key, blobs[key].dtype)
+                    assert blobs[key].dtype in (
+                        np.int32,
+                        np.float32,
+                    ), f'Blob {key} of dtype {blobs[key].dtype} must have dtype of np.int32 or np.float32'
+
                     ordered_blobs[key] = blobs[key]
                 coordinated_put(
                     self.coordinator, self._minibatch_queue, ordered_blobs
@@ -120,9 +122,7 @@ class RoIDataLoader(object):
                     logger.warning('Mini-batch queue is empty')
                 blobs = coordinated_get(self.coordinator, self._minibatch_queue)
                 self.enqueue_blobs(gpu_id, blob_names, blobs.values())
-                logger.debug(
-                    'batch queue size {}'.format(self._minibatch_queue.qsize())
-                )
+                logger.debug(f'batch queue size {self._minibatch_queue.qsize()}')
             logger.info('Stopping enqueue thread')
 
     def get_next_minibatch(self):
@@ -180,24 +180,22 @@ class RoIDataLoader(object):
         assert len(blob_names) == len(blobs)
         t = time.time()
         dev = c2_utils.CudaDevice(gpu_id)
-        queue_name = 'gpu_{}/{}'.format(gpu_id, self._blobs_queue_name)
-        blob_names = ['gpu_{}/{}'.format(gpu_id, b) for b in blob_names]
+        queue_name = f'gpu_{gpu_id}/{self._blobs_queue_name}'
+        blob_names = [f'gpu_{gpu_id}/{b}' for b in blob_names]
         for (blob_name, blob) in zip(blob_names, blobs):
             workspace.FeedBlob(blob_name, blob, device_option=dev)
-        logger.debug(
-            'enqueue_blobs {}: workspace.FeedBlob: {}'.
-            format(gpu_id, time.time() - t)
-        )
+        logger.debug(f'enqueue_blobs {gpu_id}: workspace.FeedBlob: {time.time() - t}')
         t = time.time()
         op = core.CreateOperator(
-            'SafeEnqueueBlobs', [queue_name] + blob_names,
-            blob_names + [queue_name + '_enqueue_status'],
-            device_option=dev
+            'SafeEnqueueBlobs',
+            [queue_name] + blob_names,
+            blob_names + [f'{queue_name}_enqueue_status'],
+            device_option=dev,
         )
+
         workspace.RunOperatorOnce(op)
         logger.debug(
-            'enqueue_blobs {}: workspace.RunOperatorOnce: {}'.
-            format(gpu_id, time.time() - t)
+            f'enqueue_blobs {gpu_id}: workspace.RunOperatorOnce: {time.time() - t}'
         )
 
     def create_threads(self):
@@ -261,7 +259,7 @@ class RoIDataLoader(object):
     def close_blobs_queues(self):
         """Close a BlobsQueue."""
         for gpu_id in range(self._num_gpus):
-            with core.NameScope('gpu_{}'.format(gpu_id)):
+            with core.NameScope(f'gpu_{gpu_id}'):
                 workspace.RunOperatorOnce(
                     core.CreateOperator(
                         'CloseBlobsQueue', [self._blobs_queue_name], []
@@ -270,9 +268,7 @@ class RoIDataLoader(object):
 
     def create_enqueue_blobs(self):
         blob_names = self.get_output_names()
-        enqueue_blob_names = [
-            '{}_enqueue_{}'.format(b, self._loader_id) for b in blob_names
-        ]
+        enqueue_blob_names = [f'{b}_enqueue_{self._loader_id}' for b in blob_names]
         for gpu_id in range(self._num_gpus):
             with c2_utils.NamedCudaScope(gpu_id):
                 for blob in enqueue_blob_names:

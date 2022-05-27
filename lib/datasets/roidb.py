@@ -81,6 +81,7 @@ def extend_with_flipped_entries(roidb, dataset):
     ground truth boxes and object proposals) are horizontally flipped.
     """
     flipped_roidb = []
+    dont_copy = ('boxes', 'segms', 'gt_keypoints', 'flipped')
     for entry in roidb:
         width = entry['width']
         boxes = entry['boxes'].copy()
@@ -89,11 +90,7 @@ def extend_with_flipped_entries(roidb, dataset):
         boxes[:, 0] = width - oldx2 - 1
         boxes[:, 2] = width - oldx1 - 1
         assert (boxes[:, 2] >= boxes[:, 0]).all()
-        flipped_entry = {}
-        dont_copy = ('boxes', 'segms', 'gt_keypoints', 'flipped')
-        for k, v in entry.items():
-            if k not in dont_copy:
-                flipped_entry[k] = v
+        flipped_entry = {k: v for k, v in entry.items() if k not in dont_copy}
         flipped_entry['boxes'] = boxes
         flipped_entry['segms'] = segm_utils.flip_segms(
             entry['segms'], entry['height'], entry['width']

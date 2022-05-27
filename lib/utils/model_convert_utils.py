@@ -39,7 +39,7 @@ class OpFilter(object):
         self.cond = None
         self.reverse = False
 
-        assert all([x in self.__dict__ for x in kwargs])
+        assert all(x in self.__dict__ for x in kwargs)
         self.__dict__.update(kwargs)
 
     def check(self, op):
@@ -71,9 +71,7 @@ def op_filter(**filter_args):
     def actual_decorator(f):
         @wraps(f)
         def wrapper(op, **params):
-            if not filter_op(op, **filter_args):
-                return None
-            return f(op, **params)
+            return f(op, **params) if filter_op(op, **filter_args) else None
         return wrapper
     return actual_decorator
 
@@ -96,7 +94,7 @@ def convert_op_in_ops(ops_ref, func_or_list):
     func = func_or_list
     if isinstance(func_or_list, list):
         func = op_func_chain(func_or_list)
-    ops = [op for op in ops_ref]
+    ops = list(ops_ref)
     converted_ops = []
     for op in ops:
         new_ops = func(op)
@@ -114,10 +112,7 @@ def convert_op_in_proto(proto, func_or_list):
 
 
 def get_op_arg(op, arg_name):
-    for x in op.arg:
-        if x.name == arg_name:
-            return x
-    return None
+    return next((x for x in op.arg if x.name == arg_name), None)
 
 
 def get_op_arg_valf(op, arg_name, default_val):
@@ -129,7 +124,7 @@ def update_mobile_engines(net):
     for op in net.op:
         if op.type == "Conv":
             op.engine = "NNPACK"
-        if op.type == "ConvTranspose":
+        elif op.type == "ConvTranspose":
             op.engine = "BLOCK"
 
 
@@ -142,11 +137,11 @@ def pairwise(iterable):
 
 
 def blob_uses(net, blob):
-    u = []
-    for i, op in enumerate(net.op):
-        if blob in op.input or blob in op.control_input:
-            u.append(i)
-    return u
+    return [
+        i
+        for i, op in enumerate(net.op)
+        if blob in op.input or blob in op.control_input
+    ]
 
 
 def fuse_first_affine(net, params, removed_tensors):
@@ -308,7 +303,7 @@ def gen_init_net_from_blobs(blobs, blobs_to_use=None, excluded_blobs=None):
     ''' Generate an initialization net based on a blob dict '''
     ret = caffe2_pb2.NetDef()
     if blobs_to_use is None:
-        blobs_to_use = {x for x in blobs}
+        blobs_to_use = set(blobs)
     else:
         blobs_to_use = copy.deepcopy(blobs_to_use)
     if excluded_blobs is not None:
@@ -316,8 +311,10 @@ def gen_init_net_from_blobs(blobs, blobs_to_use=None, excluded_blobs=None):
     for name in blobs_to_use:
         blob = blobs[name]
         if isinstance(blob, str):
-            print('Blob {} with type {} is not supported in generating init net,'
-                  ' skipped.'.format(name, type(blob)))
+            print(
+                f'Blob {name} with type {type(blob)} is not supported in generating init net, skipped.'
+            )
+
             continue
         add_tensor(ret, name, blob)
 
@@ -336,8 +333,7 @@ def get_ws_blobs(blob_names=None):
 
 
 def get_device_option_cpu():
-    device_option = core.DeviceOption(caffe2_pb2.CPU)
-    return device_option
+    return core.DeviceOption(caffe2_pb2.CPU)
 
 
 def get_device_option_cuda(gpu_id=0):
@@ -366,22 +362,24 @@ def compare_model(model1_func, model2_func, test_image, check_blobs):
     print('Running the second model...')
     res2 = model2_func(test_image, check_blobs)
     for idx in range(len(cb1)):
-        print('Checking {} -> {}...'.format(cb1[idx], cb2[idx]))
+        print(f'Checking {cb1[idx]} -> {cb2[idx]}...')
         n1, n2 = cb1[idx], cb2[idx]
         r1 = res1[n1] if n1 in res1 else None
         r2 = res2[n2] if n2 in res2 else None
-        assert r1 is not None or r2 is None, \
-            "Blob {} in model1 is None".format(n1)
-        assert r2 is not None or r1 is None, \
-            "Blob {} in model2 is None".format(n2)
-        assert r1.shape == r2.shape, \
-            "Blob {} and {} shape mismatched: {} vs {}".format(
-                n1, n2, r1.shape, r2.shape)
+        assert r1 is not None or r2 is None, f"Blob {n1} in model1 is None"
+        assert r2 is not None or r1 is None, f"Blob {n2} in model2 is None"
+        assert (
+            r1.shape == r2.shape
+        ), f"Blob {n1} and {n2} shape mismatched: {r1.shape} vs {r2.shape}"
+
 
         np.testing.assert_array_almost_equal(
-            r1, r2, decimal=3,
-            err_msg='{} and {} not matched. Max diff: {}'.format(
-                n1, n2, np.amax(np.absolute(r1 - r2))))
+            r1,
+            r2,
+            decimal=3,
+            err_msg=f'{n1} and {n2} not matched. Max diff: {np.amax(np.absolute(r1 - r2))}',
+        )
+
 
     return True
 
@@ -391,16 +389,15 @@ def save_graph(net, file_name, graph_name="net", op_only=True):
     from caffe2.python import net_drawer
     graph = None
     ops = net.op
-    if not op_only:
-        graph = net_drawer.GetPydotGraph(
-            ops, graph_name,
-            rankdir="TB")
-    else:
-        graph = net_drawer.GetPydotGraphMinimal(
-            ops, graph_name,
-            rankdir="TB", minimal_dependency=True)
+    graph = (
+        net_drawer.GetPydotGraphMinimal(
+            ops, graph_name, rankdir="TB", minimal_dependency=True
+        )
+        if op_only
+        else net_drawer.GetPydotGraph(ops, graph_name, rankdir="TB")
+    )
 
     try:
         graph.write_png(file_name)
     except Exception as e:
-        print('Error when writing graph to image {}'.format(e))
+        print(f'Error when writing graph to image {e}')

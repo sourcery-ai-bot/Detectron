@@ -57,10 +57,8 @@ def import_nccl_ops():
 def get_caffe2_dir():
     """Retrieve Caffe2 dir path."""
     _fp, c2_path, _desc = imp.find_module('caffe2')
-    assert os.path.exists(c2_path), \
-        'Caffe2 not found at \'{}\''.format(c2_path)
-    c2_dir = os.path.dirname(os.path.abspath(c2_path))
-    return c2_dir
+    assert os.path.exists(c2_path), f"Caffe2 not found at '{c2_path}'"
+    return os.path.dirname(os.path.abspath(c2_path))
 
 
 def get_detectron_ops_lib():
@@ -68,9 +66,10 @@ def get_detectron_ops_lib():
     c2_dir = get_caffe2_dir()
     detectron_ops_lib = os.path.join(
         c2_dir, 'lib/libcaffe2_detectron_ops_gpu.so')
-    assert os.path.exists(detectron_ops_lib), \
-        ('Detectron ops lib not found at \'{}\'; make sure that your Caffe2 '
-         'version includes Detectron module').format(detectron_ops_lib)
+    assert os.path.exists(
+        detectron_ops_lib
+    ), f"Detectron ops lib not found at '{detectron_ops_lib}'; make sure that your Caffe2 version includes Detectron module"
+
     return detectron_ops_lib
 
 
@@ -79,6 +78,8 @@ def get_custom_ops_lib():
     lib_dir, _utils = os.path.split(os.path.dirname(__file__))
     custom_ops_lib = os.path.join(
         lib_dir, 'build/libcaffe2_detectron_custom_ops_gpu.so')
-    assert os.path.exists(custom_ops_lib), \
-        'Custom ops lib not found at \'{}\''.format(custom_ops_lib)
+    assert os.path.exists(
+        custom_ops_lib
+    ), f"Custom ops lib not found at '{custom_ops_lib}'"
+
     return custom_ops_lib

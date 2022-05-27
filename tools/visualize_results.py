@@ -76,8 +76,7 @@ def parse_args():
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def vis(dataset, detections_pkl, thresh, output_dir, limit=0):
@@ -99,10 +98,7 @@ def vis(dataset, detections_pkl, thresh, output_dir, limit=0):
         all_keyps = None
 
     def id_or_index(ix, val):
-        if len(val) == 0:
-            return val
-        else:
-            return val[ix]
+        return val if len(val) == 0 else val[ix]
 
     for ix, entry in enumerate(roidb):
         if limit > 0 and ix >= limit:

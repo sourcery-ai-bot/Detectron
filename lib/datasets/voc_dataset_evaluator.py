@@ -43,7 +43,7 @@ def evaluate_boxes(
     cleanup=True,
     use_matlab=False
 ):
-    salt = '_{}'.format(str(uuid.uuid4())) if use_salt else ''
+    salt = f'_{str(uuid.uuid4())}' if use_salt else ''
     filenames = _write_voc_results_files(json_dataset, all_boxes, salt)
     _do_python_eval(json_dataset, salt, output_dir)
     if use_matlab:
@@ -58,8 +58,10 @@ def evaluate_boxes(
 def _write_voc_results_files(json_dataset, all_boxes, salt):
     filenames = []
     image_set_path = voc_info(json_dataset)['image_set_path']
-    assert os.path.exists(image_set_path), \
-        'Image set path does not exist: {}'.format(image_set_path)
+    assert os.path.exists(
+        image_set_path
+    ), f'Image set path does not exist: {image_set_path}'
+
     with open(image_set_path, 'r') as f:
         image_index = [x.strip() for x in f.readlines()]
     # Sanity check that order of images in json dataset matches order in the
@@ -71,7 +73,7 @@ def _write_voc_results_files(json_dataset, all_boxes, salt):
     for cls_ind, cls in enumerate(json_dataset.classes):
         if cls == '__background__':
             continue
-        logger.info('Writing VOC results for: {}'.format(cls))
+        logger.info(f'Writing VOC results for: {cls}')
         filename = _get_voc_results_file_template(json_dataset,
                                                   salt).format(cls)
         filenames.append(filename)
@@ -98,8 +100,8 @@ def _get_voc_results_file_template(json_dataset, salt):
     image_set = info['image_set']
     devkit_path = info['devkit_path']
     # VOCdevkit/results/VOC2007/Main/<comp_id>_det_test_aeroplane.txt
-    filename = 'comp4' + salt + '_det_' + image_set + '_{:s}.txt'
-    return os.path.join(devkit_path, 'results', 'VOC' + year, 'Main', filename)
+    filename = f'comp4{salt}_det_{image_set}' + '_{:s}.txt'
+    return os.path.join(devkit_path, 'results', f'VOC{year}', 'Main', filename)
 
 
 def _do_python_eval(json_dataset, salt, output_dir='output'):
@@ -111,11 +113,11 @@ def _do_python_eval(json_dataset, salt, output_dir='output'):
     cachedir = os.path.join(devkit_path, 'annotations_cache')
     aps = []
     # The PASCAL VOC metric changed in 2010
-    use_07_metric = True if int(year) < 2010 else False
+    use_07_metric = int(year) < 2010
     logger.info('VOC07 metric? ' + ('Yes' if use_07_metric else 'No'))
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
-    for _, cls in enumerate(json_dataset.classes):
+    for cls in json_dataset.classes:
         if cls == '__background__':
             continue
         filename = _get_voc_results_file_template(
@@ -125,7 +127,7 @@ def _do_python_eval(json_dataset, salt, output_dir='output'):
             use_07_metric=use_07_metric)
         aps += [ap]
         logger.info('AP for {} = {:.4f}'.format(cls, ap))
-        res_file = os.path.join(output_dir, cls + '_pr.pkl')
+        res_file = os.path.join(output_dir, f'{cls}_pr.pkl')
         save_object({'rec': rec, 'prec': prec, 'ap': ap}, res_file)
     logger.info('Mean AP = {:.4f}'.format(np.mean(aps)))
     logger.info('~~~~~~~~')
@@ -151,12 +153,12 @@ def _do_matlab_eval(json_dataset, salt, output_dir='output'):
     info = voc_info(json_dataset)
     path = os.path.join(
         cfg.ROOT_DIR, 'lib', 'datasets', 'VOCdevkit-matlab-wrapper')
-    cmd = 'cd {} && '.format(path)
-    cmd += '{:s} -nodisplay -nodesktop '.format(cfg.MATLAB)
+    cmd = f'cd {path} && ' + '{:s} -nodisplay -nodesktop '.format(cfg.MATLAB)
     cmd += '-r "dbstop if error; '
-    cmd += 'voc_eval(\'{:s}\',\'{:s}\',\'{:s}\',\'{:s}\'); quit;"' \
-       .format(info['devkit_path'], 'comp4' + salt, info['image_set'],
-               output_dir)
+    cmd += 'voc_eval(\'{:s}\',\'{:s}\',\'{:s}\',\'{:s}\'); quit;"'.format(
+        info['devkit_path'], f'comp4{salt}', info['image_set'], output_dir
+    )
+
     logger.info('Running:\n{}'.format(cmd))
     subprocess.call(cmd, shell=True)
 
@@ -165,12 +167,12 @@ def voc_info(json_dataset):
     year = json_dataset.name[4:8]
     image_set = json_dataset.name[9:]
     devkit_path = DATASETS[json_dataset.name][DEVKIT_DIR]
-    assert os.path.exists(devkit_path), \
-        'Devkit directory {} not found'.format(devkit_path)
-    anno_path = os.path.join(
-        devkit_path, 'VOC' + year, 'Annotations', '{:s}.xml')
+    assert os.path.exists(devkit_path), f'Devkit directory {devkit_path} not found'
+    anno_path = os.path.join(devkit_path, f'VOC{year}', 'Annotations', '{:s}.xml')
     image_set_path = os.path.join(
-        devkit_path, 'VOC' + year, 'ImageSets', 'Main', image_set + '.txt')
+        devkit_path, f'VOC{year}', 'ImageSets', 'Main', f'{image_set}.txt'
+    )
+
     return dict(
         year=year,
         image_set=image_set,

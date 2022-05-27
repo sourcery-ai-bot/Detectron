@@ -66,12 +66,13 @@ def get_retinanet_blob_names(is_training=True):
     if is_training:
         blob_names += ['retnet_fg_num', 'retnet_bg_num']
         for lvl in range(cfg.FPN.RPN_MIN_LEVEL, cfg.FPN.RPN_MAX_LEVEL + 1):
-            suffix = 'fpn{}'.format(lvl)
+            suffix = f'fpn{lvl}'
             blob_names += [
-                'retnet_cls_labels_' + suffix,
-                'retnet_roi_bbox_targets_' + suffix,
-                'retnet_roi_fg_bbox_locs_' + suffix,
+                f'retnet_cls_labels_{suffix}',
+                f'retnet_roi_bbox_targets_{suffix}',
+                f'retnet_roi_fg_bbox_locs_{suffix}',
             ]
+
     return blob_names
 
 
@@ -121,7 +122,7 @@ def add_retinanet_blobs(blobs, im_scales, roidb, image_width, image_height):
                 # the way it stacks is:
                 # [[anchors for image1] + [anchors for images 2]]
                 level = int(np.log2(foa.stride))
-                key = '{}_fpn{}'.format(k, level)
+                key = f'{k}_fpn{level}'
                 if k == 'retnet_roi_fg_bbox_locs':
                     v[:, 0] = im_i
                     # loc_stride: 80 * 4 if cls_specific else 4
@@ -147,7 +148,7 @@ def add_retinanet_blobs(blobs, im_scales, roidb, image_width, image_height):
     for k, v in blobs.items():
         if isinstance(v, list) and len(v) > 0:
             # compute number of anchors
-            A = int(len(v) / N)
+            A = len(v) // N
             # for the cls branch labels [per fpn level],
             # we have blobs['retnet_cls_labels_fpn{}'] as a list until this step
             # and length of this list is N x A where
@@ -161,10 +162,7 @@ def add_retinanet_blobs(blobs, im_scales, roidb, image_width, image_height):
             # and then concatenate the two images to get the 2 x 9 x H x W
 
             if k.find('retnet_cls_labels') >= 0:
-                tmp = []
-                # concat anchors within an image
-                for i in range(0, len(v), A):
-                    tmp.append(np.concatenate(v[i: i + A], axis=1))
+                tmp = [np.concatenate(v[i: i + A], axis=1) for i in range(0, len(v), A)]
                 # concat images
                 blobs[k] = np.concatenate(tmp, axis=0)
             else:
@@ -182,16 +180,15 @@ def add_retinanet_blobs(blobs, im_scales, roidb, image_width, image_height):
 def _get_retinanet_blobs(
         foas, all_anchors, gt_boxes, gt_classes, im_width, im_height):
     total_anchors = all_anchors.shape[0]
-    logger.debug('Getting mad blobs: im_height {} im_width: {}'.format(
-        im_height, im_width))
+    logger.debug(f'Getting mad blobs: im_height {im_height} im_width: {im_width}')
 
     inds_inside = np.arange(all_anchors.shape[0])
     anchors = all_anchors
     num_inside = len(inds_inside)
 
-    logger.debug('total_anchors: {}'.format(total_anchors))
-    logger.debug('inds_inside: {}'.format(num_inside))
-    logger.debug('anchors.shape: {}'.format(anchors.shape))
+    logger.debug(f'total_anchors: {total_anchors}')
+    logger.debug(f'inds_inside: {num_inside}')
+    logger.debug(f'anchors.shape: {anchors.shape}')
 
     # Compute anchor labels:
     # label=1 is positive, 0 is negative, -1 is don't care (ignore)

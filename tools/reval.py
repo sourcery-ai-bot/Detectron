@@ -79,8 +79,7 @@ def parse_args():
         parser.print_help()
         sys.exit(1)
 
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def do_reval(dataset_name, output_dir, args):

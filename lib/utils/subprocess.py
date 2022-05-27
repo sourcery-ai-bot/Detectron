@@ -43,15 +43,13 @@ def process_in_parallel(tag, total_range_size, binary, output_dir):
     """
     # Snapshot the current cfg state in order to pass to the inference
     # subprocesses
-    cfg_file = os.path.join(output_dir, '{}_range_config.yaml'.format(tag))
+    cfg_file = os.path.join(output_dir, f'{tag}_range_config.yaml')
     with open(cfg_file, 'w') as f:
         yaml.dump(cfg, stream=f)
     subprocess_env = os.environ.copy()
     processes = []
     subinds = np.array_split(range(total_range_size), cfg.NUM_GPUS)
-    # Determine GPUs to use
-    cuda_visible_devices = os.environ.get('CUDA_VISIBLE_DEVICES')
-    if cuda_visible_devices:
+    if cuda_visible_devices := os.environ.get('CUDA_VISIBLE_DEVICES'):
         gpu_inds = map(int, cuda_visible_devices.split(','))
         assert -1 not in gpu_inds, \
             'Hiding GPU indices using the \'-1\' index is not supported'
@@ -69,13 +67,11 @@ def process_in_parallel(tag, total_range_size, binary, output_dir):
             end=int(end),
             cfg_file=shlex_quote(cfg_file)
         )
-        logger.info('{} range command {}: {}'.format(tag, i, cmd))
+        logger.info(f'{tag} range command {i}: {cmd}')
         if i == 0:
             subprocess_stdout = subprocess.PIPE
         else:
-            filename = os.path.join(
-                output_dir, '%s_range_%s_%s.stdout' % (tag, start, end)
-            )
+            filename = os.path.join(output_dir, f'{tag}_range_{start}_{end}.stdout')
             subprocess_stdout = open(filename, 'w')  # NOQA (close below)
         p = subprocess.Popen(
             cmd,
@@ -92,9 +88,7 @@ def process_in_parallel(tag, total_range_size, binary, output_dir):
         log_subprocess_output(i, p, output_dir, tag, start, end)
         if isinstance(subprocess_stdout, file):  # NOQA (Python 2 for now)
             subprocess_stdout.close()
-        range_file = os.path.join(
-            output_dir, '%s_range_%s_%s.pkl' % (tag, start, end)
-        )
+        range_file = os.path.join(output_dir, f'{tag}_range_{start}_{end}.pkl')
         range_data = pickle.load(open(range_file))
         outputs.append(range_data)
     return outputs
@@ -106,13 +100,9 @@ def log_subprocess_output(i, p, output_dir, tag, start, end):
     other subprocesses is buffered and then printed all at once (in order) when
     subprocesses finish.
     """
-    outfile = os.path.join(
-        output_dir, '%s_range_%s_%s.stdout' % (tag, start, end)
-    )
+    outfile = os.path.join(output_dir, f'{tag}_range_{start}_{end}.stdout')
     logger.info('# ' + '-' * 76 + ' #')
-    logger.info(
-        'stdout of subprocess %s with range [%s, %s]' % (i, start + 1, end)
-    )
+    logger.info(f'stdout of subprocess {i} with range [{start + 1}, {end}]')
     logger.info('# ' + '-' * 76 + ' #')
     if i == 0:
         # Stream the piped stdout from the first subprocess in realtime
@@ -127,4 +117,4 @@ def log_subprocess_output(i, p, output_dir, tag, start, end):
         ret = p.wait()
         with open(outfile, 'r') as f:
             print(''.join(f.readlines()))
-    assert ret == 0, 'Range subprocess failed (exit code: {})'.format(ret)
+    assert ret == 0, f'Range subprocess failed (exit code: {ret})'

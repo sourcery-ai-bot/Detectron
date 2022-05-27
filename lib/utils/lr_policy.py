@@ -38,7 +38,7 @@ def get_lr_at_iter(it):
             alpha = it / cfg.SOLVER.WARM_UP_ITERS
             warmup_factor = cfg.SOLVER.WARM_UP_FACTOR * (1 - alpha) + alpha
         else:
-            raise KeyError('Unknown SOLVER.WARM_UP_METHOD: {}'.format(method))
+            raise KeyError(f'Unknown SOLVER.WARM_UP_METHOD: {method}')
         lr *= warmup_factor
     return np.float32(lr)
 
@@ -106,9 +106,8 @@ def get_step_index(cur_iter):
 
 
 def get_lr_func():
-    policy = 'lr_func_' + cfg.SOLVER.LR_POLICY
+    policy = f'lr_func_{cfg.SOLVER.LR_POLICY}'
     if policy not in globals():
-        raise NotImplementedError(
-            'Unknown LR policy: {}'.format(cfg.SOLVER.LR_POLICY))
+        raise NotImplementedError(f'Unknown LR policy: {cfg.SOLVER.LR_POLICY}')
     else:
         return globals()[policy]

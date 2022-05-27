@@ -47,7 +47,6 @@ def get_fast_rcnn_blob_names(is_training=True):
         # labels_int32 blob: R categorical labels in [0, ..., K] for K
         # foreground classes plus background
         blob_names += ['labels_int32']
-    if is_training:
         # bbox_targets blob: R bounding-box regression targets with 4
         # targets per class
         blob_names += ['bbox_targets']
@@ -55,35 +54,35 @@ def get_fast_rcnn_blob_names(is_training=True):
         # this binary vector sepcifies the subset of active targets
         blob_names += ['bbox_inside_weights']
         blob_names += ['bbox_outside_weights']
-    if is_training and cfg.MODEL.MASK_ON:
-        # 'mask_rois': RoIs sampled for training the mask prediction branch.
-        # Shape is (#masks, 5) in format (batch_idx, x1, y1, x2, y2).
-        blob_names += ['mask_rois']
-        # 'roi_has_mask': binary labels for the RoIs specified in 'rois'
-        # indicating if each RoI has a mask or not. Note that in some cases
-        # a *bg* RoI will have an all -1 (ignore) mask associated with it in
-        # the case that no fg RoIs can be sampled. Shape is (batchsize).
-        blob_names += ['roi_has_mask_int32']
-        # 'masks_int32' holds binary masks for the RoIs specified in
-        # 'mask_rois'. Shape is (#fg, M * M) where M is the ground truth
-        # mask size.
-        blob_names += ['masks_int32']
-    if is_training and cfg.MODEL.KEYPOINTS_ON:
-        # 'keypoint_rois': RoIs sampled for training the keypoint prediction
-        # branch. Shape is (#instances, 5) in format (batch_idx, x1, y1, x2,
-        # y2).
-        blob_names += ['keypoint_rois']
-        # 'keypoint_locations_int32': index of keypoint in
-        # KRCNN.HEATMAP_SIZE**2 sized array. Shape is (#instances). Used in
-        # SoftmaxWithLoss.
-        blob_names += ['keypoint_locations_int32']
-        # 'keypoint_weights': weight assigned to each target in
-        # 'keypoint_locations_int32'. Shape is (#instances). Used in
-        # SoftmaxWithLoss.
-        blob_names += ['keypoint_weights']
-        # 'keypoint_loss_normalizer': optional normalization factor to use if
-        # cfg.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS is False.
-        blob_names += ['keypoint_loss_normalizer']
+        if cfg.MODEL.MASK_ON:
+            # 'mask_rois': RoIs sampled for training the mask prediction branch.
+            # Shape is (#masks, 5) in format (batch_idx, x1, y1, x2, y2).
+            blob_names += ['mask_rois']
+            # 'roi_has_mask': binary labels for the RoIs specified in 'rois'
+            # indicating if each RoI has a mask or not. Note that in some cases
+            # a *bg* RoI will have an all -1 (ignore) mask associated with it in
+            # the case that no fg RoIs can be sampled. Shape is (batchsize).
+            blob_names += ['roi_has_mask_int32']
+            # 'masks_int32' holds binary masks for the RoIs specified in
+            # 'mask_rois'. Shape is (#fg, M * M) where M is the ground truth
+            # mask size.
+            blob_names += ['masks_int32']
+        if cfg.MODEL.KEYPOINTS_ON:
+            # 'keypoint_rois': RoIs sampled for training the keypoint prediction
+            # branch. Shape is (#instances, 5) in format (batch_idx, x1, y1, x2,
+            # y2).
+            blob_names += ['keypoint_rois']
+            # 'keypoint_locations_int32': index of keypoint in
+            # KRCNN.HEATMAP_SIZE**2 sized array. Shape is (#instances). Used in
+            # SoftmaxWithLoss.
+            blob_names += ['keypoint_locations_int32']
+            # 'keypoint_weights': weight assigned to each target in
+            # 'keypoint_locations_int32'. Shape is (#instances). Used in
+            # SoftmaxWithLoss.
+            blob_names += ['keypoint_weights']
+            # 'keypoint_loss_normalizer': optional normalization factor to use if
+            # cfg.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS is False.
+            blob_names += ['keypoint_loss_normalizer']
     if cfg.FPN.FPN_ON and cfg.FPN.MULTILEVEL_ROIS:
         # Support for FPN multi-level rois without bbox reg isn't
         # implemented (... and may never be implemented)
@@ -91,16 +90,16 @@ def get_fast_rcnn_blob_names(is_training=True):
         k_min = cfg.FPN.ROI_MIN_LEVEL
         # Same format as rois blob, but one per FPN level
         for lvl in range(k_min, k_max + 1):
-            blob_names += ['rois_fpn' + str(lvl)]
+            blob_names += [f'rois_fpn{str(lvl)}']
         blob_names += ['rois_idx_restore_int32']
         if is_training:
             if cfg.MODEL.MASK_ON:
                 for lvl in range(k_min, k_max + 1):
-                    blob_names += ['mask_rois_fpn' + str(lvl)]
+                    blob_names += [f'mask_rois_fpn{str(lvl)}']
                 blob_names += ['mask_rois_idx_restore_int32']
             if cfg.MODEL.KEYPOINTS_ON:
                 for lvl in range(k_min, k_max + 1):
-                    blob_names += ['keypoint_rois_fpn' + str(lvl)]
+                    blob_names += [f'keypoint_rois_fpn{str(lvl)}']
                 blob_names += ['keypoint_rois_idx_restore_int32']
     return blob_names
 

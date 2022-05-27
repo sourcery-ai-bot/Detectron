@@ -78,8 +78,8 @@ def multi_gpu_generate_rpn_on_dataset(num_images, output_dir):
     # Retrieve the test_net binary path
     binary_dir = envu.get_runtime_dir()
     binary_ext = envu.get_py_bin_ext()
-    binary = os.path.join(binary_dir, 'test_net' + binary_ext)
-    assert os.path.exists(binary), 'Binary \'{}\' not found'.format(binary)
+    binary = os.path.join(binary_dir, f'test_net{binary_ext}')
+    assert os.path.exists(binary), f"Binary '{binary}' not found"
 
     # Run inference in parallel in subprocesses
     outputs = subprocess_utils.process_in_parallel(
@@ -97,7 +97,7 @@ def multi_gpu_generate_rpn_on_dataset(num_images, output_dir):
     save_object(
         dict(boxes=boxes, scores=scores, ids=ids, cfg=cfg_yaml), rpn_file
     )
-    logger.info('Wrote RPN proposals to {}'.format(os.path.abspath(rpn_file)))
+    logger.info(f'Wrote RPN proposals to {os.path.abspath(rpn_file)}')
     return boxes, scores, ids, rpn_file
 
 
@@ -139,7 +139,7 @@ def generate_rpn_on_range(ind_range=None):
     save_object(
         dict(boxes=boxes, scores=scores, ids=ids, cfg=cfg_yaml), rpn_file
     )
-    logger.info('Wrote RPN proposals to {}'.format(os.path.abspath(rpn_file)))
+    logger.info(f'Wrote RPN proposals to {os.path.abspath(rpn_file)}')
     return boxes, scores, ids, rpn_file
 
 
@@ -193,13 +193,15 @@ def im_proposals(model, im):
         k_max = cfg.FPN.RPN_MAX_LEVEL
         k_min = cfg.FPN.RPN_MIN_LEVEL
         rois_names = [
-            core.ScopedName('rpn_rois_fpn' + str(l))
+            core.ScopedName(f'rpn_rois_fpn{str(l)}')
             for l in range(k_min, k_max + 1)
         ]
+
         score_names = [
-            core.ScopedName('rpn_roi_probs_fpn' + str(l))
+            core.ScopedName(f'rpn_roi_probs_fpn{str(l)}')
             for l in range(k_min, k_max + 1)
         ]
+
         blobs = workspace.FetchBlobs(rois_names + score_names)
         # Combine predictions across all levels and retain the top scoring
         boxes = np.concatenate(blobs[:len(rois_names)])
@@ -269,10 +271,8 @@ def _get_image_blob(im):
     im_orig -= cfg.PIXEL_MEANS
 
     im_shape = im_orig.shape
-    im_size_min = np.min(im_shape[0:2])
-    im_size_max = np.max(im_shape[0:2])
-
-    processed_ims = []
+    im_size_min = np.min(im_shape[:2])
+    im_size_max = np.max(im_shape[:2])
 
     assert len(cfg.TEST.SCALES) == 1
     target_size = cfg.TEST.SCALES[0]
@@ -284,8 +284,7 @@ def _get_image_blob(im):
     im = cv2.resize(im_orig, None, None, fx=im_scale, fy=im_scale,
                     interpolation=cv2.INTER_LINEAR)
     im_info = np.hstack((im.shape[:2], im_scale))[np.newaxis, :]
-    processed_ims.append(im)
-
+    processed_ims = [im]
     # Create a blob to hold the input images
     blob = im_list_to_blob(processed_ims)
 

@@ -31,8 +31,7 @@ import utils.logging
 
 
 def get_roidb_blobs(roidb):
-    blobs = {}
-    blobs['data'] = np.stack([entry['data'] for entry in roidb])
+    blobs = {'data': np.stack([entry['data'] for entry in roidb])}
     return blobs, True
 
 
@@ -42,7 +41,7 @@ def get_net(data_loader, name):
     net = core.Net(name)
     net.type = 'dag'
     for gpu_id in range(cfg.NUM_GPUS):
-        with core.NameScope('gpu_{}'.format(gpu_id)):
+        with core.NameScope(f'gpu_{gpu_id}'):
             with core.DeviceScope(muji.OnGPU(gpu_id)):
                 for blob_name in blob_names:
                     blob = core.ScopedName(blob_name)
@@ -55,10 +54,7 @@ def get_net(data_loader, name):
 
 
 def get_roidb_sample_data(sample_data):
-    roidb = []
-    for _ in range(np.random.randint(4, 10)):
-        roidb.append({'data': sample_data})
-    return roidb
+    return [{'data': sample_data} for _ in range(np.random.randint(4, 10))]
 
 
 def create_loader_and_network(sample_data, name):
@@ -73,11 +69,10 @@ def create_loader_and_network(sample_data, name):
 def run_net(net):
     workspace.RunNetOnce(net)
     gpu_dev = core.DeviceOption(caffe2_pb2.CUDA, 0)
-    name_scope = 'gpu_{}'.format(0)
+    name_scope = 'gpu_0'
     with core.NameScope(name_scope):
         with core.DeviceScope(gpu_dev):
-            data = workspace.FetchBlob(core.ScopedName('data'))
-            return data
+            return workspace.FetchBlob(core.ScopedName('data'))
 
 
 class TestRoIDataLoader(unittest.TestCase):

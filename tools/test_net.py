@@ -120,7 +120,7 @@ def main(ind_range=None, multi_gpu_testing=False):
             if cfg.TEST.PRECOMPUTED_PROPOSALS:
                 cfg.TEST.PROPOSAL_FILE = cfg.TEST.PROPOSAL_FILES[i]
             results = parent_func(multi_gpu=multi_gpu_testing)
-            all_results.update(results)
+            all_results |= results
 
         task_evaluation.check_expected_results(
             all_results,
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     logger.info(pprint.pformat(cfg))
 
     while not os.path.exists(cfg.TEST.WEIGHTS) and args.wait:
-        logger.info('Waiting for \'{}\' to exist...'.format(cfg.TEST.WEIGHTS))
+        logger.info(f"Waiting for '{cfg.TEST.WEIGHTS}' to exist...")
         time.sleep(10)
 
     main(ind_range=args.range, multi_gpu_testing=args.multi_gpu_testing)

@@ -71,17 +71,16 @@ def add_stage(
     for i in range(n):
         blob_in = add_residual_block(
             model,
-            '{}_{}'.format(prefix, i),
+            f'{prefix}_{i}',
             blob_in,
             dim_in,
             dim_out,
             dim_inner,
             dilation,
             stride_init,
-            # Not using inplace for the last block;
-            # it may be fetched externally or used by FPN
-            inplace_sum=i < n - 1
+            inplace_sum=i < n - 1,
         )
+
         dim_in = dim_out
     return blob_in, dim_in
 
@@ -186,7 +185,7 @@ def add_residual_block(
     if inplace_sum:
         s = model.net.Sum([tr, sc], tr)
     else:
-        s = model.net.Sum([tr, sc], prefix + '_sum')
+        s = model.net.Sum([tr, sc], f'{prefix}_sum')
 
     return model.Relu(s, s)
 
@@ -197,14 +196,15 @@ def add_shortcut(model, prefix, blob_in, dim_in, dim_out, stride):
 
     c = model.Conv(
         blob_in,
-        prefix + '_branch1',
+        f'{prefix}_branch1',
         dim_in,
         dim_out,
         kernel=1,
         stride=stride,
-        no_bias=1
+        no_bias=1,
     )
-    return model.AffineChannel(c, prefix + '_branch1_bn', dim=dim_out)
+
+    return model.AffineChannel(c, f'{prefix}_branch1_bn', dim=dim_out)
 
 
 # ------------------------------------------------------------------------------
@@ -231,20 +231,21 @@ def bottleneck_transformation(
     # conv 1x1 -> BN -> ReLU
     cur = model.ConvAffine(
         blob_in,
-        prefix + '_branch2a',
+        f'{prefix}_branch2a',
         dim_in,
         dim_inner,
         kernel=1,
         stride=str1x1,
         pad=0,
-        inplace=True
+        inplace=True,
     )
+
     cur = model.Relu(cur, cur)
 
     # conv 3x3 -> BN -> ReLU
     cur = model.ConvAffine(
         cur,
-        prefix + '_branch2b',
+        f'{prefix}_branch2b',
         dim_inner,
         dim_inner,
         kernel=3,
@@ -252,8 +253,9 @@ def bottleneck_transformation(
         pad=1 * dilation,
         dilation=dilation,
         group=group,
-        inplace=True
+        inplace=True,
     )
+
     cur = model.Relu(cur, cur)
 
     # conv 1x1 -> BN (no ReLU)
@@ -261,12 +263,13 @@ def bottleneck_transformation(
     # gradient computation for graphs like this
     cur = model.ConvAffine(
         cur,
-        prefix + '_branch2c',
+        f'{prefix}_branch2c',
         dim_inner,
         dim_out,
         kernel=1,
         stride=1,
         pad=0,
-        inplace=False
+        inplace=False,
     )
+
     return cur
